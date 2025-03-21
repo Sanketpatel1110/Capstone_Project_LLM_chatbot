@@ -1,0 +1,9 @@
+# Backend
+ai_chatbot_backend/venv/
+
+# Frontend
+ai_chatbot_frontend/node_modules/
+
+# General
+__pycache__/
+*.log
