@@ -1,4 +1,5 @@
-// import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+// import React from "react";
+// import { Routes, Route, Navigate, useLocation, matchPath } from "react-router-dom";
 // import Navbar from "./components/Navbar";
 // import LoginForm from "./components/LoginForm";
 // import UrbanRegistrationForm from "./components/UrbanRegistrationForm";
@@ -11,23 +12,27 @@
 // import MFA from "./components/MFA";
 // import AdminDashboard from "./components/AdminDashboard";
 // import AddMarkdownPage from "./components/AddMarkdownPage";
-// import MarkdownContentPage from "./components/MarkdownContentPage";
-// import Unauthorized from "./components/Unauthorized";
 // import ProtectedRoute from "./components/ProtectedRoute";
 // import AdminProtectedRoute from "./components/AdminProtectedRoute";
-
+// import EventForm from "./components/EventForm";
 // function App() {
 //   const location = useLocation();
 
-//   // Define paths where Navbar shouldn't appear
-//   const noNavbarPaths = ["/", "/register", "/forgot-password", "/reset-password", "/mfa", "/thank-you"];
+//   const noNavbarPaths = [
+//     "/",
+//     "/register",
+//     "/forgot-password",
+//     "/reset-password/:token",
+//     "/mfa",
+//     "/thank-you",
+//   ];
 
-//   // Conditionally render Navbar
-//   const showNavbar = !["/", "/register", "/forgot-password", "/reset-password", "/mfa", "/thank-you"].includes(location.pathname);
+//   const showNavbar = !noNavbarPaths.some(path => matchPath(path, location.pathname));
 
 //   return (
 //     <>
 //       {showNavbar && <Navbar />}
+
 //       <Routes>
 //         {/* Public Routes without Navbar */}
 //         <Route path="/" element={<LoginForm />} />
@@ -36,14 +41,13 @@
 //         <Route path="/reset-password/:token" element={<ResetPassword />} />
 //         <Route path="/thank-you" element={<ThankYou />} />
 //         <Route path="/mfa" element={<MFA />} />
-//         <Route path="/unauthorized" element={<Unauthorized />} />
 
-//         {/* Protected routes (after login) with Navbar */}
+//         {/* Protected User Routes with Navbar */}
 //         <Route element={<ProtectedRoute />}>
 //           <Route path="/main" element={<ChatbotPage />} />
 //           <Route path="/blogs" element={<BlogPost />} />
 //           <Route path="/add-post" element={<AddPost />} />
-
+//           <Route path="/EventForm" element={<EventForm />} />
 //           {/* Admin Protected Routes */}
 //           <Route element={<AdminProtectedRoute />}>
 //             <Route path="/admin-dashboard" element={<AdminDashboard />} />
@@ -51,10 +55,7 @@
 //           </Route>
 //         </Route>
 
-//         <Route path="/markdown-page/:contentId" element={<MarkdownContentPage />} />
-//         <Route path="/unauthorized" element={<Unauthorized />} />
-
-//         {/* Catch-all route */}
+//         {/* Fallback Route */}
 //         <Route path="*" element={<Navigate to="/" />} />
 //       </Routes>
 //     </>
@@ -63,9 +64,7 @@
 
 // export default App;
 
-
-
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Routes, Route, Navigate, useLocation, matchPath } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import LoginForm from "./components/LoginForm";
@@ -82,8 +81,11 @@ import AddMarkdownPage from "./components/AddMarkdownPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminProtectedRoute from "./components/AdminProtectedRoute";
 import EventForm from "./components/EventForm";
+import MarkdownContentPage from "./components/MarkdownContentPage";
+
 function App() {
   const location = useLocation();
+  const [darkMode, setDarkMode] = useState(false);
 
   const noNavbarPaths = [
     "/",
@@ -96,12 +98,33 @@ function App() {
 
   const showNavbar = !noNavbarPaths.some(path => matchPath(path, location.pathname));
 
+  useEffect(() => {
+    const storedTheme = localStorage.getItem("theme");
+    if (storedTheme === "dark") {
+      setDarkMode(true);
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    const isDark = !darkMode;
+    setDarkMode(isDark);
+    localStorage.setItem("theme", isDark ? "dark" : "light");
+  };
+
+  // Theme styles
+  const appStyle = {
+    backgroundColor: darkMode ? "#121212" : "#ffffff",
+    color: darkMode ? "#f5f5f5" : "#000000",
+    minHeight: "100vh",
+    transition: "background-color 0.3s ease, color 0.3s ease",
+  };
+
   return (
-    <>
-      {showNavbar && <Navbar />}
+    <div style={appStyle}>
+      {showNavbar && <Navbar darkMode={darkMode} toggleTheme={toggleTheme} />}
 
       <Routes>
-        {/* Public Routes without Navbar */}
+        {/* Public Routes */}
         <Route path="/" element={<LoginForm />} />
         <Route path="/register" element={<UrbanRegistrationForm />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -109,23 +132,22 @@ function App() {
         <Route path="/thank-you" element={<ThankYou />} />
         <Route path="/mfa" element={<MFA />} />
 
-        {/* Protected User Routes with Navbar */}
+        {/* Protected Routes */}
         <Route element={<ProtectedRoute />}>
           <Route path="/main" element={<ChatbotPage />} />
           <Route path="/blogs" element={<BlogPost />} />
           <Route path="/add-post" element={<AddPost />} />
           <Route path="/EventForm" element={<EventForm />} />
-          {/* Admin Protected Routes */}
           <Route element={<AdminProtectedRoute />}>
             <Route path="/admin-dashboard" element={<AdminDashboard />} />
             <Route path="/add-markdown-page" element={<AddMarkdownPage />} />
+            <Route path="/markdown-page/:Id" element={<MarkdownContentPage />} />
           </Route>
         </Route>
 
-        {/* Fallback Route */}
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
-    </>
+    </div>
   );
 }
 

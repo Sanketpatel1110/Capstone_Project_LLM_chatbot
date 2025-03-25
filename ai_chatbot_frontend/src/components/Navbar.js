@@ -4,11 +4,14 @@
 // const Navbar = () => {
 //     const [hovered, setHovered] = useState(null);
 //     const navigate = useNavigate();
-// const sessionToken = localStorage.getItem("session_token");
+
+//     const sessionToken = localStorage.getItem("session_token");
+//     const userRole = localStorage.getItem("user_role"); // Retrieve stored role clearly
 
 //     const handleLogout = () => {
-//         localStorage.removeItem("authToken"); // Adjust this based on how authentication is handled
-//         navigate("/"); // Redirect to the login page
+//         localStorage.removeItem("session_token");
+//         localStorage.removeItem("user_role");  // Clear user role on logout
+//         navigate("/"); // Redirect to login page
 //     };
 
 //     const navbarStyle = {
@@ -19,7 +22,6 @@
 //         padding: "15px 30px",
 //         color: "white"
 //     };
-    
 
 //     const logoStyle = {
 //         fontSize: "22px",
@@ -59,6 +61,17 @@
 //         transition: "background 0.3s ease-in-out"
 //     };
 
+//     // Common links visible to all logged-in users
+//     // const commonPaths = ["/main", "/blogs", "/add-post"];
+//     // const commonLabels = ["CHATBOT", "BLOGS", "ADD POST"];
+
+//     const commonPaths = ["/main", "/blogs"];
+//     const commonLabels = ["CHATBOT", "BLOGS"];
+
+//     // Additional links visible only to admin users
+//     const adminPaths = ["/admin-dashboard", "/add-markdown-page" ,"/EventForm"];
+//     const adminLabels = ["ADMIN DASHBOARD", "ADD MARKDOWN PAGE", "EventForm"];
+
 //     return (
 //         <nav style={navbarStyle}>
 //             <div>
@@ -67,53 +80,59 @@
 //                 </Link>
 //             </div>
 //             <ul style={navLinksStyle}>
-//                 {["/main", "/blogs", "/add-post","/admin-dashboard"].map((path, index) => {
-//                     const labels = ["CHATBOT", "BLOGS", "ADD POST","ADMIN DASHBOARD"];
-//                     return (
-//                         <li key={index} style={navItemStyle}>
-//                             <Link 
-//                                 to={path} 
-//                                 style={linkStyle(hovered === index)}
-//                                 onMouseEnter={() => setHovered(index)}
-//                                 onMouseLeave={() => setHovered(null)}
-//                             >
-//                                 {labels[index]}
-//                             </Link>
-//                         </li>
-//                     );
-//                 })}
+//                 {commonPaths.map((path, index) => (
+//                     <li key={index} style={navItemStyle}>
+//                         <Link
+//                             to={path}
+//                             style={linkStyle(hovered === path)}
+//                             onMouseEnter={() => setHovered(path)}
+//                             onMouseLeave={() => setHovered(null)}
+//                         >
+//                             {commonLabels[index]}
+//                         </Link>
+//                     </li>
+//                 ))}
+
+//                 {/* Clearly render admin links only if user is admin */}
+//                 {userRole === 'admin' && adminPaths.map((path, index) => (
+//                     <li key={`admin-${index}`} style={navItemStyle}>
+//                         <Link
+//                             to={path}
+//                             style={linkStyle(hovered === path)}
+//                             onMouseEnter={() => setHovered(path)}
+//                             onMouseLeave={() => setHovered(null)}
+//                         >
+//                             {adminLabels[index]}
+//                         </Link>
+//                     </li>
+//                 ))}
+
 //                 <li>
-                
 //                     <button style={logoutButtonStyle} onClick={handleLogout}>
 //                         Logout
 //                     </button>
-
-                    
 //                 </li>
 //             </ul>
-
 //         </nav>
 //     );
 // };
 
 // export default Navbar;
 
-
-
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
-const Navbar = () => {
+const Navbar = ({ darkMode, toggleTheme }) => {
     const [hovered, setHovered] = useState(null);
     const navigate = useNavigate();
 
     const sessionToken = localStorage.getItem("session_token");
-    const userRole = localStorage.getItem("user_role"); // Retrieve stored role clearly
+    const userRole = localStorage.getItem("user_role");
 
     const handleLogout = () => {
         localStorage.removeItem("session_token");
-        localStorage.removeItem("user_role");  // Clear user role on logout
-        navigate("/"); // Redirect to login page
+        localStorage.removeItem("user_role");
+        navigate("/");
     };
 
     const navbarStyle = {
@@ -122,7 +141,8 @@ const Navbar = () => {
         alignItems: "center",
         background: "#222",
         padding: "15px 30px",
-        color: "white"
+        color: "white",
+        flexWrap: "wrap"
     };
 
     const logoStyle = {
@@ -137,7 +157,8 @@ const Navbar = () => {
         display: "flex",
         alignItems: "center",
         margin: "0",
-        padding: "0"
+        padding: "0",
+        flexWrap: "wrap"
     };
 
     const navItemStyle = {
@@ -163,16 +184,11 @@ const Navbar = () => {
         transition: "background 0.3s ease-in-out"
     };
 
-    // Common links visible to all logged-in users
-    // const commonPaths = ["/main", "/blogs", "/add-post"];
-    // const commonLabels = ["CHATBOT", "BLOGS", "ADD POST"];
-
     const commonPaths = ["/main", "/blogs"];
     const commonLabels = ["CHATBOT", "BLOGS"];
 
-    // Additional links visible only to admin users
-    const adminPaths = ["/admin-dashboard", "/add-markdown-page" ,"/EventForm"];
-    const adminLabels = ["ADMIN DASHBOARD", "ADD MARKDOWN PAGE", "EventForm"];
+    const adminPaths = ["/admin-dashboard", "/add-markdown-page", "/EventForm"];
+    const adminLabels = ["ADMIN DASHBOARD", "ADD MARKDOWN PAGE", "EVENTFORM"];
 
     return (
         <nav style={navbarStyle}>
@@ -195,7 +211,6 @@ const Navbar = () => {
                     </li>
                 ))}
 
-                {/* Clearly render admin links only if user is admin */}
                 {userRole === 'admin' && adminPaths.map((path, index) => (
                     <li key={`admin-${index}`} style={navItemStyle}>
                         <Link
@@ -209,6 +224,41 @@ const Navbar = () => {
                     </li>
                 ))}
 
+                {/* 🌙 Theme toggle button */}
+                <li style={navItemStyle}>
+                    <label style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        background: darkMode ? "#555" : "#ddd",
+                        borderRadius: "20px",
+                        padding: "5px",
+                        cursor: "pointer",
+                        transition: "background 0.3s ease-in-out"
+                    }}>
+                        <span style={{
+                            background: darkMode ? "#ffcc00" : "#222",
+                            color: darkMode ? "#222" : "#fff",
+                            borderRadius: "50%",
+                            width: "30px",
+                            height: "30px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontSize: "16px",
+                            transition: "all 0.3s ease-in-out"
+                        }}>
+                            {darkMode ? "☀️" : "🌙"}
+                        </span>
+                        <input
+                            type="checkbox"
+                            checked={darkMode}
+                            onChange={toggleTheme}
+                            style={{ display: "none" }}
+                        />
+                    </label>
+                </li>
+
+                {/* 🚪 Logout button */}
                 <li>
                     <button style={logoutButtonStyle} onClick={handleLogout}>
                         Logout
