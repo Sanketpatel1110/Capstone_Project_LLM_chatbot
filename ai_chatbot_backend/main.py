@@ -20,7 +20,7 @@ import chromadb
 from langchain.vectorstores import Chroma
 from langchain.embeddings.openai import OpenAIEmbeddings
 # from langchain.docstore.document import Document
-from typing import Optional
+from typing import Optional, List
 from uuid import uuid4
 from fastapi import Body
 
@@ -54,6 +54,12 @@ def generate_session_id(email: str) -> str:
 # ChromaDB Setup
 chroma_client = chromadb.PersistentClient(path="./chroma_db")
 vector_db = Chroma(collection_name="chat_data", embedding_function=OpenAIEmbeddings(api_key=OPENAI_API_KEY), client=chroma_client)
+
+docs_vector_db = Chroma(
+    collection_name="knowledge_base",
+    embedding_function=OpenAIEmbeddings(api_key=OPENAI_API_KEY),
+    client=chroma_client
+)
 
 class ForgotPasswordRequest(BaseModel):
     email: EmailStr
@@ -303,6 +309,15 @@ async def get_all_chats(session_id: str = Query(...)):
         print("❌ Error in get_all_chats:", e)
         raise HTTPException(status_code=500, detail="Failed to load chats")
 
+@app.post("/api/rag/upload")
+async def upload_docs(texts: List[str] = Body(..., embed=True)):
+    try:
+        metadatas = [{"source": f"doc_{i}"} for i in range(len(texts))]
+        docs_vector_db.add_texts(texts=texts, metadatas=metadatas)
+        return {"message": f"{len(texts)} documents uploaded successfully"}
+    except Exception as e:
+        return {"error": str(e)}
+
 @app.post("/api/chat/")
 async def chat(request: ChatRequest):
     try:
@@ -322,12 +337,35 @@ async def chat(request: ChatRequest):
         existing_metadata = json.loads(chat_history["metadatas"][0]["messages"]) if chat_history["metadatas"] else []
 
         # ✅ Generate AI response
+        # response = client.chat.completions.create(
+        #     model="gpt-4o-mini",
+        #     messages=[
+        #         {"role": "system", "content": "You are an AI chatbot that assists users."},
+        #         *[ {"role": msg["role"], "content": msg["message"]} for msg in existing_metadata ],
+        #         {"role": "user", "content": request.query}
+        #     ],
+        #     temperature=0.7
+        # )
+
+        # 🔍 Step 1: Retrieve relevant documents
+        retrieved_chunks = docs_vector_db.similarity_search(request.query, k=3)
+        retrieved_context = "\n".join([doc.page_content for doc in retrieved_chunks])
+
+        # 🧠 Step 2: Use RAG-style prompt construction
         response = client.chat.completions.create(
             model="gpt-4o-mini",
+
+            ### It's only for Rag
+            # messages=[
+            #     {"role": "system", "content": "You are an AI assistant that uses retrieved documents to answer questions."},
+            #     {"role": "user", "content": f"Relevant Info:\n{retrieved_context}\n\nUser Query:\n{request.query}"}
+            # ],
+
+            ### It's for Memory and
             messages=[
-                {"role": "system", "content": "You are an AI chatbot that assists users."},
-                *[ {"role": msg["role"], "content": msg["message"]} for msg in existing_metadata ],
-                {"role": "user", "content": request.query}
+                {"role": "system", "content": "You're a helpful assistant using context + memory."},
+                *[{"role": msg["role"], "content": msg["message"]} for msg in existing_metadata],
+                {"role": "user", "content": f"Relevant Info:\n{retrieved_context}\n\nUser Query:\n{request.query}"}
             ],
             temperature=0.7
         )
