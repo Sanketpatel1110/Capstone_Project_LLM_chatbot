@@ -56,7 +56,7 @@ const MFA = () => {
                     draggable: true,
                     theme: 'colored',
                 });
-                setTimeout(() => navigate('/main'), 2200);
+                setTimeout(() => navigate('/blogs'), 2200);
             }
         } catch (error) {
             setError("Something went wrong. Please try again later.");

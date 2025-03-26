@@ -22,6 +22,7 @@ from langchain.embeddings.openai import OpenAIEmbeddings
 # from langchain.docstore.document import Document
 from typing import Optional
 from uuid import uuid4
+from fastapi import Body
 
 # Load environment variables
 load_dotenv()
@@ -418,6 +419,14 @@ async def get_chat_history(
     except Exception as e:
         print(f"❌ Error fetching ChromaDB history: {e}")
         raise HTTPException(status_code=500, detail="Failed to retrieve chat history from ChromaDB.")
+
+@app.delete("/api/chat/delete")
+async def delete_chat(session_id: str = Body(...), chat_id: str = Body(...)):
+    try:
+        vector_db.delete(ids=[chat_id])  # Use ChromaDB delete API
+        return {"message": "Chat deleted successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 # ✅ API Status Endpoints
 @app.get("/api/hello")
