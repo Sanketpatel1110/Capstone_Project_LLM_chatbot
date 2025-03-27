@@ -34,7 +34,7 @@ const MFA = () => {
             if (!response.ok) {
                 setError(data.detail?.msg || data.detail || "Invalid OTP. Please try again.");
             } else {
-                // localStorage.setItem('session_token', data.session_token);
+                localStorage.setItem('session_token', data.session_token);
                 const newSession = data.session_id;
                 const newChat = data.chat_id;
                 sessionStorage.setItem("chatSessionId", newSession);
@@ -44,7 +44,7 @@ const MFA = () => {
 
                 console.log("Session ID: ", newSession);
                 console.log("Chat ID: ", newChat);
-                // console.log("Session Token: ", data.session_token);
+                console.log("Session Token: ", data.session_token);
 
                 localStorage.setItem('user_role', data.role);
                 toast.success('🎉 Verification successful!', {
@@ -56,6 +56,7 @@ const MFA = () => {
                     draggable: true,
                     theme: 'colored',
                 });
+                console.log("Role: ", data.role);
                 setTimeout(() => navigate('/blogs'), 2200);
             }
         } catch (error) {

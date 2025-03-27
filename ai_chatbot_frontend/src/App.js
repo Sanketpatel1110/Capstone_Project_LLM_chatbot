@@ -18,6 +18,7 @@ import EventForm from "./components/EventForm";
 import MarkdownContentPage from "./components/MarkdownContentPage";
 import BlogGrid from "./components/landing_page";
 import BlogPost from "./components/BlogsPage";
+import BlogForm from "./components/blogform";
 
 function App() {
   const location = useLocation();
@@ -71,11 +72,11 @@ function App() {
         {/* Protected Routes */}
         <Route element={<ProtectedRoute />}>
           <Route path="/main" element={<ChatbotPage darkMode={darkMode} />} />
-          {/* <Route path="/blogs" element={<BlogPost />} /> */}
           <Route path="/add-post" element={<AddPost />} />
           <Route path="/EventForm" element={<EventForm />} />
           <Route path="/blogs" element={<BlogGrid darkMode={darkMode} />} />
           <Route path="/blog/:id" element={<BlogPost darkMode={darkMode} />} />
+          <Route path="/blogform" element={<BlogForm darkMode={darkMode} />} />
           <Route element={<AdminProtectedRoute />}>
             <Route path="/admin-dashboard" element={<AdminDashboard />} />
             <Route path="/add-markdown-page" element={<AddMarkdownPage />} />

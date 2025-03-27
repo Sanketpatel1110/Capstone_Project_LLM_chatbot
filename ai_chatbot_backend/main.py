@@ -124,6 +124,22 @@ class Event(BaseModel):
     date_range: str
     description: str
 
+class SessionItem(BaseModel):
+    name: str
+    link: str
+
+class TakeawayItem(BaseModel):
+    name: str
+    link: str
+
+class BlogModel(BaseModel):
+    title: str
+    date: str
+    summary: str
+    introduction: str
+    sessions: List[SessionItem]
+    takeaways: List[TakeawayItem]
+
 # Utility function to get user by email
 async def get_user_by_email(email: str):
     return await users_collection.find_one({"email": email})
@@ -197,7 +213,7 @@ async def verify_otp(request: OTPRequest):
     if not user or user.get("otp") != request.otp:
         raise HTTPException(status_code=401, detail="Invalid OTP")
 
-    # session_token = secrets.token_hex(32)
+    session_token = secrets.token_hex(32)
     session_id = generate_session_id(request.email)
     chat_id = str(uuid4()) 
 
@@ -318,6 +334,100 @@ async def upload_docs(texts: List[str] = Body(..., embed=True)):
     except Exception as e:
         return {"error": str(e)}
 
+# @app.post("/api/chat/")
+# async def chat(request: ChatRequest):
+#     try:
+#         print(f"🔍 Received: session_id={request.session_id}, chat_id={request.chat_id}, query='{request.query}'")
+
+#         if not request.session_id:
+#             raise HTTPException(status_code=400, detail="Session ID is required")
+#         if not request.chat_id:
+#             raise HTTPException(status_code=400, detail="Chat ID is required")
+
+#         user = await users_collection.find_one({"session_id": request.session_id})
+#         if not user:
+#             raise HTTPException(status_code=401, detail="Invalid session")
+
+#         chat_history = vector_db.get(ids=[request.chat_id])
+#         existing_messages = json.loads(chat_history["documents"][0]) if chat_history["documents"] else []
+#         existing_metadata = json.loads(chat_history["metadatas"][0]["messages"]) if chat_history["metadatas"] else []
+
+#         # ✅ Generate AI response
+#         # response = client.chat.completions.create(
+#         #     model="gpt-4o-mini",
+#         #     messages=[
+#         #         {"role": "system", "content": "You are an AI chatbot that assists users."},
+#         #         *[ {"role": msg["role"], "content": msg["message"]} for msg in existing_metadata ],
+#         #         {"role": "user", "content": request.query}
+#         #     ],
+#         #     temperature=0.7
+#         # )
+
+#         # 🔍 Step 1: Retrieve relevant documents
+#         retrieved_chunks = docs_vector_db.similarity_search(request.query, k=3)
+#         retrieved_context = "\n".join([doc.page_content for doc in retrieved_chunks])
+
+#         # 🧠 Step 2: Use RAG-style prompt construction
+#         response = client.chat.completions.create(
+#             model="gpt-4o-mini",
+
+#             ### It's only for Rag
+#             # messages=[
+#             #     {"role": "system", "content": "You are an AI assistant that uses retrieved documents to answer questions."},
+#             #     {"role": "user", "content": f"Relevant Info:\n{retrieved_context}\n\nUser Query:\n{request.query}"}
+#             # ],
+
+#             ### It's for Memory and
+#             messages=[
+#                 {"role": "system", "content": "You're a helpful assistant using context + memory."},
+#                 *[{"role": msg["role"], "content": msg["message"]} for msg in existing_metadata],
+#                 {"role": "user", "content": f"Relevant Info:\n{retrieved_context}\n\nUser Query:\n{request.query}"}
+#             ],
+#             temperature=0.7
+#         )
+
+#         ai_response = response.choices[0].message.content
+
+#         new_messages = existing_messages + [request.query, ai_response]
+#         new_metadata = existing_metadata + [
+#             {
+#                 "role": "user",
+#                 "message": request.query,
+#                 "session_id": request.session_id,
+#                 "chat_id": request.chat_id,
+#                 "timestamp": str(datetime.utcnow())
+#             },
+#             {
+#                 "role": "assistant",
+#                 "message": ai_response,
+#                 "session_id": request.session_id,
+#                 "chat_id": request.chat_id,
+#                 "timestamp": str(datetime.utcnow())
+#             }
+#         ]
+
+#         vector_db.add_texts(
+#             texts=[json.dumps(new_messages)],
+#             metadatas=[{
+#                 "session_id": request.session_id,
+#                 "chat_id": request.chat_id,
+#                 "messages": json.dumps(new_metadata)
+#             }],
+#             ids=[request.chat_id]
+#         )
+
+#         print(f"📦 Stored in ChromaDB: chat_id={request.chat_id}")
+
+#         return {
+#             "response": ai_response,
+#             "session_id": request.session_id,
+#             "chat_id": request.chat_id
+#         }
+
+#     except Exception as e:
+#         print(f"❌ Chat error: {e}")
+#         return {"response": "Sorry, something went wrong.", "session_id": request.session_id}
+
 @app.post("/api/chat/")
 async def chat(request: ChatRequest):
     try:
@@ -332,47 +442,78 @@ async def chat(request: ChatRequest):
         if not user:
             raise HTTPException(status_code=401, detail="Invalid session")
 
+        # ✅ Retrieve existing chat history from ChromaDB
         chat_history = vector_db.get(ids=[request.chat_id])
         existing_messages = json.loads(chat_history["documents"][0]) if chat_history["documents"] else []
         existing_metadata = json.loads(chat_history["metadatas"][0]["messages"]) if chat_history["metadatas"] else []
 
-        # ✅ Generate AI response
-        # response = client.chat.completions.create(
-        #     model="gpt-4o-mini",
-        #     messages=[
-        #         {"role": "system", "content": "You are an AI chatbot that assists users."},
-        #         *[ {"role": msg["role"], "content": msg["message"]} for msg in existing_metadata ],
-        #         {"role": "user", "content": request.query}
-        #     ],
-        #     temperature=0.7
-        # )
-
-        # 🔍 Step 1: Retrieve relevant documents
+        # ✅ Step 1: Retrieve related documents from knowledge base
         retrieved_chunks = docs_vector_db.similarity_search(request.query, k=3)
         retrieved_context = "\n".join([doc.page_content for doc in retrieved_chunks])
+        top_doc_response = retrieved_chunks[0].page_content if retrieved_chunks else "No context found."
 
-        # 🧠 Step 2: Use RAG-style prompt construction
-        response = client.chat.completions.create(
+        # ✅ Step 2: Generate response using LLM and RAG context
+        openai_response = client.chat.completions.create(
             model="gpt-4o-mini",
-
-            ### It's only for Rag
-            # messages=[
-            #     {"role": "system", "content": "You are an AI assistant that uses retrieved documents to answer questions."},
-            #     {"role": "user", "content": f"Relevant Info:\n{retrieved_context}\n\nUser Query:\n{request.query}"}
-            # ],
-
-            ### It's for Memory and
             messages=[
-                {"role": "system", "content": "You're a helpful assistant using context + memory."},
+                {"role": "system", "content": "You're a helpful assistant using memory and documents."},
                 *[{"role": msg["role"], "content": msg["message"]} for msg in existing_metadata],
-                {"role": "user", "content": f"Relevant Info:\n{retrieved_context}\n\nUser Query:\n{request.query}"}
+                {"role": "user", "content": f"Relevant Info:\n{retrieved_context}\n\nQuery:\n{request.query}"}
             ],
             temperature=0.7
-        )
+        ).choices[0].message.content
 
-        ai_response = response.choices[0].message.content
+        # openai_response = client.chat.completions.create(
+        #     model="gpt-4o-mini",
+        #     messages=[
+        #         {"role": "system", "content": "You are a helpful assistant. ONLY use the provided context to answer. If the answer is not in the context, reply with: 'I'm sorry, I couldn't find that information in the documents.'"},
+        #         *[{"role": msg["role"], "content": msg["message"]} for msg in existing_metadata],
+        #         {"role": "user", "content": f"Context:\n{retrieved_context}\n\nQuery:\n{request.query}"}
+        #     ],
+        #     temperature=0.0
+        # ).choices[0].message.content
 
-        new_messages = existing_messages + [request.query, ai_response]
+        # openai_response = client.chat.completions.create(
+        #     model="gpt-4o-mini",
+        #     messages=[
+        #         {"role": "system", "content": "You are a strict assistant. ONLY answer using the provided context. If the answer is not found in the context, respond with: 'Sorry, I couldn't find that information in the provided documents.' Do NOT guess or provide potentially incorrect information."},
+        #         {"role": "user", "content": f"Context:\n{retrieved_context}\n\nQuestion:\n{request.query}"}
+        #     ],
+        #     temperature=0.0  # removes creativity/hallucination
+        # ).choices[0].message.content
+
+        # ✅ Step 3: Ask LLM to validate which response is better
+        validation_prompt = f"""You are a helpful assistant evaluating two responses for a user query.
+
+        Query: {request.query}
+
+        Answer A (OpenAI): {openai_response}
+
+        Answer B (From Knowledge Base): {top_doc_response}
+
+        Which answer better addresses the user's query? Reply with 'A' or 'B' and a brief explanation.
+        """
+
+        validation_response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "user", "content": validation_prompt}
+            ],
+            temperature=0.2
+        ).choices[0].message.content.strip()
+
+        print(f"✅ Validation Response: {validation_response}")
+
+        # ✅ Decide which answer to use
+        if "A" in validation_response:
+            final_answer = openai_response
+        elif "B" in validation_response:
+            final_answer = top_doc_response
+        else:
+            final_answer = openai_response  # fallback
+
+        # ✅ Store updated chat in ChromaDB
+        new_messages = existing_messages + [request.query, final_answer]
         new_metadata = existing_metadata + [
             {
                 "role": "user",
@@ -383,7 +524,7 @@ async def chat(request: ChatRequest):
             },
             {
                 "role": "assistant",
-                "message": ai_response,
+                "message": final_answer,
                 "session_id": request.session_id,
                 "chat_id": request.chat_id,
                 "timestamp": str(datetime.utcnow())
@@ -403,15 +544,16 @@ async def chat(request: ChatRequest):
         print(f"📦 Stored in ChromaDB: chat_id={request.chat_id}")
 
         return {
-            "response": ai_response,
+            "response": final_answer,
             "session_id": request.session_id,
-            "chat_id": request.chat_id
+            "chat_id": request.chat_id,
+            "validation_summary": validation_response  # (optional for debugging)
         }
 
     except Exception as e:
         print(f"❌ Chat error: {e}")
+        traceback.print_exc()
         return {"response": "Sorry, something went wrong.", "session_id": request.session_id}
-
 
 @app.get("/api/chat/history")
 async def get_chat_history(
@@ -465,6 +607,118 @@ async def delete_chat(session_id: str = Body(...), chat_id: str = Body(...)):
         return {"message": "Chat deleted successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+# @app.post("/api/blogs")
+# async def store_blog(blog: BlogModel):
+#     try:
+#         content = f"{blog.title}\n{blog.date}\n{blog.summary}\n{blog.introduction}"
+#         for s in blog.sessions:
+#             content += f"\nSession: {s.name} - {s.link}"
+#         for t in blog.takeaways:
+#             content += f"\nTakeaway: {t.name} - {t.link}"
+
+#         # Generate embedding
+#         embedding_fn = OpenAIEmbeddings(api_key=OPENAI_API_KEY)
+#         embedding = embedding_fn.embed_query(content)
+
+#         # Store in ChromaDB
+#         docs_vector_db.add_texts(
+#             texts=[content],
+#             metadatas=[{
+#                 "title": blog.title,
+#                 "date": blog.date,
+#                 "summary": blog.summary
+#             }]
+#         )
+
+#         return {"message": "✅ Blog stored successfully in vector DB"}
+
+#     except Exception as e:
+#         print("❌ Error storing blog:", e)
+#         raise HTTPException(status_code=500, detail="Failed to store blog in vector DB")
+
+@app.post("/api/blogs")
+async def store_blog(blog: BlogModel):
+    try:
+        # ✅ Get current max blog ID from vector DB
+        existing_docs = docs_vector_db.get()
+        existing_ids = [
+            doc_meta.get("id", 0)
+            for doc_meta in existing_docs["metadatas"]
+            if isinstance(doc_meta.get("id", None), int)
+        ]
+        next_id = max(existing_ids, default=0) + 1
+
+        # ✅ Format the full blog content for vector storage
+        formatted_content = (
+            f"ID: {next_id}\n"
+            f"Title: {blog.title}\n"
+            f"Date: {blog.date}\n"
+            f"Summary: {blog.summary}\n"
+            f"Introduction: {blog.introduction}\n"
+        )
+
+        for session in blog.sessions:
+            formatted_content += f"Session: {session.name} - {session.link}\n"
+        for takeaway in blog.takeaways:
+            formatted_content += f"Takeaway: {takeaway.name} - {takeaway.link}\n"
+
+        # ✅ Convert to string to avoid Chroma metadata error
+        sessions_json = json.dumps([s.dict() for s in blog.sessions])
+        takeaways_json = json.dumps([t.dict() for t in blog.takeaways])
+
+        # ✅ Store in vector DB
+        docs_vector_db.add_texts(
+            texts=[formatted_content],
+            metadatas=[{
+                "id": next_id,
+                "title": blog.title,
+                "date": blog.date,
+                "summary": blog.summary,
+                "introduction": blog.introduction,
+                "sessions": sessions_json,
+                "takeaways": takeaways_json
+            }]
+        )
+
+        return {"message": f"✅ Blog stored successfully with ID {next_id}", "id": next_id}
+
+    except Exception as e:
+        print("❌ Error storing blog:", e)
+        raise HTTPException(status_code=500, detail="Failed to store blog in vector DB")
+    
+
+@app.get("/api/all-blogs")
+async def get_all_blogs():
+    try:
+
+        # Get all documents
+        all_data = docs_vector_db.get()
+
+        blogs = []
+        for metadata in all_data["metadatas"]:
+            # Only return blogs that contain full blog metadata
+            if all(key in metadata for key in ["id", "title", "date", "summary", "introduction", "sessions", "takeaways"]):
+                try:
+                    blog = {
+                        "id": metadata["id"],
+                        "title": metadata["title"],
+                        "date": metadata["date"],
+                        "summary": metadata["summary"],
+                        "introduction": metadata["introduction"],
+                        "sessions": json.loads(metadata["sessions"]),
+                        "takeaways": json.loads(metadata["takeaways"])
+                    }
+                    blogs.append(blog)
+                except Exception as e:
+                    print(f"⚠️ Skipping blog with invalid metadata: {e}")
+                    continue
+
+        return blogs
+
+    except Exception as e:
+        print(f"❌ Error fetching blogs from ChromaDB: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch blogs from vector DB")
 
 # ✅ API Status Endpoints
 @app.get("/api/hello")
@@ -500,6 +754,7 @@ async def reset_password(request: ResetPasswordRequest):
     await users_collection.update_one({"reset_token": request.token}, {"$set": {"password": hashed_password}, "$unset": {"reset_token": "", "reset_token_expiry": ""}})
     
     return {"message": "Password reset successful"}
+
 @app.get("/api/check-chromadb")
 async def check_chromadb():
     try:
@@ -569,22 +824,52 @@ async def delete_markdown_content(content_id: str):
         raise HTTPException(404, "Content not found")
     return {"message": "Content deleted"}
 
-
 @app.get("/api/get-whole-db")
-async def get_whole_db():
+async def get_whole_db(collection_name: str = Query(..., description="Name of the vector DB collection (e.g., 'chat_data' or 'knowledge_base')")):
     try:
         chroma_client = chromadb.PersistentClient(path="./chroma_db")
-        collection = chroma_client.get_collection("chat_data")
-        
+
+        # Get list of available collections (just names in v0.6.0+)
+        available_collections = chroma_client.list_collections()
+
+        if collection_name not in available_collections:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Collection '{collection_name}' not found. Available: {available_collections}"
+            )
+
+        # Access the collection directly
+        collection = chroma_client.get_collection(name=collection_name)
+
         # Fetch all documents
         all_documents = collection.get()
-        
+
         return {
-            "all_documents": all_documents,
+            "collection_name": collection_name,
+            "total_documents": len(all_documents["documents"]),
             "documents": all_documents["documents"],
             "metadatas": all_documents["metadatas"],
             "ids": all_documents["ids"]
         }
+
+    except Exception as e:
+        print("❌ Error getting whole DB:", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/delete-collection")
+async def delete_collection(collection_name: str = Query(...)):
+    try:
+        chroma_client = chromadb.PersistentClient(path="./chroma_db")
+
+        # Check if collection exists
+        available_collections = chroma_client.list_collections()
+        if collection_name not in available_collections:
+            raise HTTPException(status_code=404, detail=f"Collection '{collection_name}' not found.")
+
+        # Delete collection
+        chroma_client.delete_collection(name=collection_name)
+
+        return {"message": f"✅ Collection '{collection_name}' deleted successfully."}
     
     except Exception as e:
         return {"error": str(e)}
