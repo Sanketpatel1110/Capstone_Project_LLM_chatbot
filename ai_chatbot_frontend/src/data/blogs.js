@@ -73,7 +73,7 @@ const blogData = [
   
 export default blogData;
 
-```
+/*```
 [
     {
         "id": 1,
@@ -191,4 +191,4 @@ export default blogData;
         ]
     }
 ]
-```
+```*/
