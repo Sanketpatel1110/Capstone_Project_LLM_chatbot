@@ -137,6 +137,7 @@ class BlogModel(BaseModel):
     date: str
     summary: str
     introduction: str
+    explanation: str
     sessions: List[SessionItem]
     takeaways: List[TakeawayItem]
 
@@ -428,6 +429,7 @@ async def upload_docs(texts: List[str] = Body(..., embed=True)):
 #         print(f"❌ Chat error: {e}")
 #         return {"response": "Sorry, something went wrong.", "session_id": request.session_id}
 
+# TODO: working fine but gpt isn't learning from mistakes.
 @app.post("/api/chat/")
 async def chat(request: ChatRequest):
     try:
@@ -555,6 +557,130 @@ async def chat(request: ChatRequest):
         traceback.print_exc()
         return {"response": "Sorry, something went wrong.", "session_id": request.session_id}
 
+# @app.post("/api/chat/")
+# async def chat(request: ChatRequest):
+#     try:
+#         print(f"🔍 Received: session_id={request.session_id}, chat_id={request.chat_id}, query='{request.query}'")
+
+#         if not request.session_id:
+#             raise HTTPException(status_code=400, detail="Session ID is required")
+#         if not request.chat_id:
+#             raise HTTPException(status_code=400, detail="Chat ID is required")
+
+#         # ✅ Authenticate user
+#         user = await users_collection.find_one({"session_id": request.session_id})
+#         if not user:
+#             raise HTTPException(status_code=401, detail="Invalid session")
+
+#         # ✅ Retrieve existing chat history from ChromaDB
+#         chat_history = vector_db.get(ids=[request.chat_id])
+#         existing_messages = json.loads(chat_history["documents"][0]) if chat_history["documents"] else []
+#         existing_metadata = json.loads(chat_history["metadatas"][0]["messages"]) if chat_history["metadatas"] else []
+
+#         # ✅ Step 1: Retrieve related documents from knowledge base
+#         retrieved_chunks = docs_vector_db.similarity_search(request.query, k=3)
+#         retrieved_context = "\n".join([doc.page_content for doc in retrieved_chunks])
+#         top_doc_response = retrieved_chunks[0].page_content if retrieved_chunks else "No context found."
+
+#         # ✅ Step 2: Build prompt using only past *correct* messages
+#         validated_history = [
+#             {"role": msg["role"], "content": msg["message"]}
+#             for msg in existing_metadata[-6:] if msg["role"] == "user" or msg.get("correct", True)
+#         ]
+
+#         messages = [
+#             {"role": "system", "content": "You're a helpful assistant using memory and documents."},
+#             *validated_history,
+#             {"role": "user", "content": f"Relevant Info:\n{retrieved_context}\n\nQuery:\n{request.query}"}
+#         ]
+
+#         openai_response = client.chat.completions.create(
+#             model="gpt-4o-mini",
+#             messages=messages,
+#             temperature=0.7
+#         ).choices[0].message.content
+
+#         # ✅ Step 3: Ask LLM to validate which answer is better
+#         validation_prompt = f"""You are a helpful assistant evaluating two responses for a user query.
+
+#         Query: {request.query}
+
+#         Answer A (OpenAI): {openai_response}
+
+#         Answer B (From Knowledge Base): {top_doc_response}
+
+#         Which answer better addresses the user's query? Reply with 'A' or 'B' and a brief explanation.
+#         """
+
+#         validation_response = client.chat.completions.create(
+#             model="gpt-4o-mini",
+#             messages=[{"role": "user", "content": validation_prompt}],
+#             temperature=0.2
+#         ).choices[0].message.content.strip()
+
+#         print(f"✅ Validation Response: {validation_response}")
+
+#         use_openai = "A" in validation_response
+#         final_answer = openai_response if use_openai else top_doc_response
+
+#         # ✅ Store incorrect OpenAI answers in MongoDB (optional)
+#         if not use_openai:
+#             await mistakes_collection.insert_one({
+#                 "query": request.query,
+#                 "wrong_answer": openai_response,
+#                 "correct_answer": top_doc_response,
+#                 "session_id": request.session_id,
+#                 "chat_id": request.chat_id,
+#                 "timestamp": datetime.utcnow()
+#             })
+
+#         # ✅ Store updated conversation with validation metadata
+#         new_messages = existing_messages + [request.query, final_answer]
+#         new_metadata = existing_metadata + [
+#             {
+#                 "role": "user",
+#                 "message": request.query,
+#                 "session_id": request.session_id,
+#                 "chat_id": request.chat_id,
+#                 "timestamp": str(datetime.utcnow())
+#             },
+#             {
+#                 "role": "assistant",
+#                 "message": final_answer,
+#                 "session_id": request.session_id,
+#                 "chat_id": request.chat_id,
+#                 "timestamp": str(datetime.utcnow()),
+#                 "source": "openai" if use_openai else "kb",
+#                 "correct": use_openai
+#             }
+#         ]
+
+#         # ✅ Use unique vector ID per message for ChromaDB
+#         unique_vector_id = f"{request.chat_id}_{str(uuid.uuid4())}"
+#         vector_db.add_texts(
+#             texts=[json.dumps(new_messages)],
+#             metadatas=[{
+#                 "session_id": request.session_id,
+#                 "chat_id": request.chat_id,
+#                 "messages": json.dumps(new_metadata)
+#             }],
+#             ids=[unique_vector_id]
+#         )
+
+#         print(f"📦 Stored in ChromaDB: chat_id={request.chat_id}, vector_id={unique_vector_id}")
+
+#         return {
+#             "response": final_answer,
+#             "session_id": request.session_id,
+#             "chat_id": request.chat_id,
+#             "validation_summary": validation_response  # optional, for debugging or UI display
+#         }
+
+#     except Exception as e:
+#         print(f"❌ Chat error: {e}")
+#         traceback.print_exc()
+#         return {"response": "Sorry, something went wrong.", "session_id": request.session_id}
+
 @app.get("/api/chat/history")
 async def get_chat_history(
     session_id: str = Query(..., description="Chat session ID"),
@@ -608,34 +734,6 @@ async def delete_chat(session_id: str = Body(...), chat_id: str = Body(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
-# @app.post("/api/blogs")
-# async def store_blog(blog: BlogModel):
-#     try:
-#         content = f"{blog.title}\n{blog.date}\n{blog.summary}\n{blog.introduction}"
-#         for s in blog.sessions:
-#             content += f"\nSession: {s.name} - {s.link}"
-#         for t in blog.takeaways:
-#             content += f"\nTakeaway: {t.name} - {t.link}"
-
-#         # Generate embedding
-#         embedding_fn = OpenAIEmbeddings(api_key=OPENAI_API_KEY)
-#         embedding = embedding_fn.embed_query(content)
-
-#         # Store in ChromaDB
-#         docs_vector_db.add_texts(
-#             texts=[content],
-#             metadatas=[{
-#                 "title": blog.title,
-#                 "date": blog.date,
-#                 "summary": blog.summary
-#             }]
-#         )
-
-#         return {"message": "✅ Blog stored successfully in vector DB"}
-
-#     except Exception as e:
-#         print("❌ Error storing blog:", e)
-#         raise HTTPException(status_code=500, detail="Failed to store blog in vector DB")
 
 @app.post("/api/blogs")
 async def store_blog(blog: BlogModel):
@@ -656,6 +754,7 @@ async def store_blog(blog: BlogModel):
             f"Date: {blog.date}\n"
             f"Summary: {blog.summary}\n"
             f"Introduction: {blog.introduction}\n"
+            f"Explanation: {blog.explanation}\n"
         )
 
         for session in blog.sessions:
@@ -676,6 +775,7 @@ async def store_blog(blog: BlogModel):
                 "date": blog.date,
                 "summary": blog.summary,
                 "introduction": blog.introduction,
+                "explanation": blog.explanation,
                 "sessions": sessions_json,
                 "takeaways": takeaways_json
             }]
@@ -698,7 +798,7 @@ async def get_all_blogs():
         blogs = []
         for metadata in all_data["metadatas"]:
             # Only return blogs that contain full blog metadata
-            if all(key in metadata for key in ["id", "title", "date", "summary", "introduction", "sessions", "takeaways"]):
+            if all(key in metadata for key in ["id", "title", "date", "summary", "introduction", "explanation", "sessions", "takeaways"]):
                 try:
                     blog = {
                         "id": metadata["id"],
@@ -706,6 +806,7 @@ async def get_all_blogs():
                         "date": metadata["date"],
                         "summary": metadata["summary"],
                         "introduction": metadata["introduction"],
+                        "explanation": metadata["explanation"],
                         "sessions": json.loads(metadata["sessions"]),
                         "takeaways": json.loads(metadata["takeaways"])
                     }

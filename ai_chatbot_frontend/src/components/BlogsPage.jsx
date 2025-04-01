@@ -1,11 +1,36 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import blogData from "../data/blogs";
+import ReactMarkdown from "react-markdown";
+// import blogData from "../data/blogs";
 
 const BlogPost = ({ darkMode }) => {
   const { id } = useParams();
-  const blog = blogData.find((b) => b.id === parseInt(id));
+  const [blog, setBlog] = useState(null);
+  const [allBlogs, setAllBlogs] = useState([]);
+  const [loading, setLoading] = useState(true);
 
+  // Fetch all blogs (for the left sidebar) and the current blog
+  useEffect(() => {
+    const fetchBlogData = async () => {
+      try {
+        const res = await fetch("http://localhost:8000/api/all-blogs");
+        const data = await res.json();
+        setAllBlogs(data);
+
+        const selectedBlog = data.find((b) => b.id === parseInt(id));
+        setBlog(selectedBlog);
+      } catch (error) {
+        console.error("❌ Error fetching blog data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBlogData();
+  }, [id]);
+
+
+  if (loading) return <div style={{ padding: "20px" }}>Loading blog...</div>;
   if (!blog) return <div style={{ padding: "20px" }}>Blog not found</div>;
 
   const pageStyle = {
@@ -89,7 +114,7 @@ const BlogPost = ({ darkMode }) => {
         <div style={sidebarStyle}>
           <h3 style={{ fontSize: "18px", marginBottom: "12px" }}>Conferences</h3>
           <ul style={{ paddingLeft: "16px" }}>
-            {blogData.map((conf) => (
+            {allBlogs.map((conf) => (
               <li key={conf.id} style={listItemStyle}>
                 <a
                   href={`/blog/${conf.id}`}
@@ -114,6 +139,12 @@ const BlogPost = ({ darkMode }) => {
 
           <h2 style={sectionHeadingStyle}>1.0 Introduction</h2>
           <p style={paragraphStyle}>{blog.introduction}</p>
+
+          <h2 style={sectionHeadingStyle}>2.0 Explanation</h2>
+          {/* <p style={paragraphStyle}>{blog.explanation}</p> */}
+          <div style={paragraphStyle}>
+            <ReactMarkdown>{blog.explanation}</ReactMarkdown>
+          </div>
 
           <ul style={{ paddingLeft: "20px" }}>
             {blog.sessions.map((session, idx) => (
