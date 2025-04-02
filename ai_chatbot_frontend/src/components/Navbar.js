@@ -187,8 +187,10 @@ const Navbar = ({ darkMode, toggleTheme }) => {
     const commonPaths = ["/main", "/blogs"];
     const commonLabels = ["CHATBOT", "BLOGS"];
 
-    const adminPaths = ["/admin-dashboard", "/add-markdown-page", "/EventForm", "/blogform"];
-    const adminLabels = ["ADMIN DASHBOARD", "ADD MARKDOWN PAGE", "EVENTFORM", "BLOGFORM"];
+    // const adminPaths = ["/admin-dashboard", "/add-markdown-page", "/EventForm", "/blogform"];
+    const adminPaths = [ "/blogform"];
+    // const adminLabels = ["ADMIN DASHBOARD", "ADD MARKDOWN PAGE", "EVENTFORM", "BLOGFORM"];
+    const adminLabels = [ "BLOGFORM"];
 
     return (
         <nav style={navbarStyle}>
