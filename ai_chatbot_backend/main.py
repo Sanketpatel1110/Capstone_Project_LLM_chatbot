@@ -1,5 +1,5 @@
 import json
-from fastapi import FastAPI, HTTPException, status, Query, BackgroundTasks
+from fastapi import FastAPI, HTTPException, status, Query, BackgroundTasks, APIRouter
 from pydantic import BaseModel, EmailStr
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
@@ -23,6 +23,7 @@ from langchain.embeddings.openai import OpenAIEmbeddings
 from typing import Optional, List
 from uuid import uuid4
 from fastapi import Body
+from anyio import to_thread
 
 # Load environment variables
 load_dotenv()
@@ -335,6 +336,164 @@ async def upload_docs(texts: List[str] = Body(..., embed=True)):
     except Exception as e:
         return {"error": str(e)}
 
+def generate_openai_response(messages):
+    return client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=messages,
+        temperature=0.7
+    ).choices[0].message.content
+
+
+# 🚀 Blocking validation call
+def validate_response(prompt):
+    return client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.2
+    ).choices[0].message.content.strip()
+
+
+# 🚀 Blocking ChromaDB get
+def get_vector_data(chat_id):
+    return vector_db.get(ids=[chat_id])
+
+
+# 🚀 Blocking ChromaDB add
+def add_to_vector_db(texts, metadata, chat_id):
+    return vector_db.add_texts(
+        texts=[json.dumps(texts)],
+        metadatas=[{
+            "session_id": metadata[0]["session_id"],
+            "chat_id": metadata[0]["chat_id"],
+            "messages": json.dumps(metadata)
+        }],
+        ids=[chat_id]
+    )
+
+def generate_openai_response(messages):
+    return client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=messages,
+        temperature=0.7
+    ).choices[0].message.content
+
+
+# 🚀 Blocking validation call
+def validate_response(prompt):
+    return client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.2
+    ).choices[0].message.content.strip()
+
+
+# 🚀 Blocking ChromaDB get
+def get_vector_data(chat_id):
+    return vector_db.get(ids=[chat_id])
+
+
+# 🚀 Blocking ChromaDB add
+def add_to_vector_db(texts, metadata, chat_id):
+    return vector_db.add_texts(
+        texts=[json.dumps(texts)],
+        metadatas=[{
+            "session_id": metadata[0]["session_id"],
+            "chat_id": metadata[0]["chat_id"],
+            "messages": json.dumps(metadata)
+        }],
+        ids=[chat_id]
+    )
+
+@app.post("/api/chat/")
+async def chat(request: ChatRequest):
+    try:
+        print(f"🔍 Received: session_id={request.session_id}, chat_id={request.chat_id}, query='{request.query}'")
+
+        if not request.session_id:
+            raise HTTPException(status_code=400, detail="Session ID is required")
+        if not request.chat_id:
+            raise HTTPException(status_code=400, detail="Chat ID is required")
+
+        user = await users_collection.find_one({"session_id": request.session_id})
+        if not user:
+            raise HTTPException(status_code=401, detail="Invalid session")
+
+        # ✅ Step 1: Retrieve existing chat history
+        chat_history = await to_thread.run_sync(get_vector_data, request.chat_id)
+        existing_messages = json.loads(chat_history["documents"][0]) if chat_history["documents"] else []
+        existing_metadata = json.loads(chat_history["metadatas"][0]["messages"]) if chat_history["metadatas"] else []
+
+        # ✅ Step 2: Retrieve related context from docs vector DB
+        retrieved_chunks = docs_vector_db.similarity_search(request.query, k=3)
+        retrieved_context = "\n".join([doc.page_content for doc in retrieved_chunks])
+        top_doc_response = retrieved_chunks[0].page_content if retrieved_chunks else "No context found."
+
+        # ✅ Step 3: Generate OpenAI response with memory + context
+        messages = [
+            {"role": "system", "content": "You're a helpful assistant using memory and documents."},
+            *[{"role": msg["role"], "content": msg["message"]} for msg in existing_metadata],
+            {"role": "user", "content": f"Relevant Info:\n{retrieved_context}\n\nQuery:\n{request.query}"}
+        ]
+        openai_response = await to_thread.run_sync(generate_openai_response, messages)
+
+        # ✅ Step 4: Validate between OpenAI vs Top Doc Response
+        validation_prompt = f"""You are a helpful assistant evaluating two responses for a user query.
+
+        Query: {request.query}
+
+        Answer A (OpenAI): {openai_response}
+
+        Answer B (From Knowledge Base): {top_doc_response}
+
+        Which answer better addresses the user's query? Reply with 'A' or 'B' and a brief explanation.
+        """
+        validation_response = await to_thread.run_sync(validate_response, validation_prompt)
+        print(f"✅ Validation Response: {validation_response}")
+
+        final_answer = (
+            openai_response if "A" in validation_response
+            else top_doc_response if "B" in validation_response
+            else openai_response
+        )
+
+        # ✅ Step 5: Save updated conversation to ChromaDB
+        new_messages = existing_messages + [request.query, final_answer]
+        new_metadata = existing_metadata + [
+            {
+                "role": "user",
+                "message": request.query,
+                "session_id": request.session_id,
+                "chat_id": request.chat_id,
+                "timestamp": str(datetime.utcnow())
+            },
+            {
+                "role": "assistant",
+                "message": final_answer,
+                "session_id": request.session_id,
+                "chat_id": request.chat_id,
+                "timestamp": str(datetime.utcnow())
+            }
+        ]
+        await to_thread.run_sync(add_to_vector_db, new_messages, new_metadata, request.chat_id)
+        print(f"📦 Stored in ChromaDB: chat_id={request.chat_id}")
+
+        return {
+            "response": final_answer,
+            "session_id": request.session_id,
+            "chat_id": request.chat_id,
+            "validation_summary": validation_response
+        }
+
+    except Exception as e:
+        print(f"❌ Chat error: {e}")
+        traceback.print_exc()
+        return {
+            "response": "Sorry, something went wrong.",
+            "session_id": request.session_id,
+            "chat_id": request.chat_id
+        }
+
+# TODO: working fine but gpt isn't learning from mistakes.
 # @app.post("/api/chat/")
 # async def chat(request: ChatRequest):
 #     try:
@@ -349,47 +508,78 @@ async def upload_docs(texts: List[str] = Body(..., embed=True)):
 #         if not user:
 #             raise HTTPException(status_code=401, detail="Invalid session")
 
+#         # ✅ Retrieve existing chat history from ChromaDB
 #         chat_history = vector_db.get(ids=[request.chat_id])
 #         existing_messages = json.loads(chat_history["documents"][0]) if chat_history["documents"] else []
 #         existing_metadata = json.loads(chat_history["metadatas"][0]["messages"]) if chat_history["metadatas"] else []
 
-#         # ✅ Generate AI response
-#         # response = client.chat.completions.create(
-#         #     model="gpt-4o-mini",
-#         #     messages=[
-#         #         {"role": "system", "content": "You are an AI chatbot that assists users."},
-#         #         *[ {"role": msg["role"], "content": msg["message"]} for msg in existing_metadata ],
-#         #         {"role": "user", "content": request.query}
-#         #     ],
-#         #     temperature=0.7
-#         # )
-
-#         # 🔍 Step 1: Retrieve relevant documents
+#         # ✅ Step 1: Retrieve related documents from knowledge base
 #         retrieved_chunks = docs_vector_db.similarity_search(request.query, k=3)
 #         retrieved_context = "\n".join([doc.page_content for doc in retrieved_chunks])
+#         top_doc_response = retrieved_chunks[0].page_content if retrieved_chunks else "No context found."
 
-#         # 🧠 Step 2: Use RAG-style prompt construction
-#         response = client.chat.completions.create(
+#         # ✅ Step 2: Generate response using LLM and RAG context
+#         openai_response = client.chat.completions.create(
 #             model="gpt-4o-mini",
-
-#             ### It's only for Rag
-#             # messages=[
-#             #     {"role": "system", "content": "You are an AI assistant that uses retrieved documents to answer questions."},
-#             #     {"role": "user", "content": f"Relevant Info:\n{retrieved_context}\n\nUser Query:\n{request.query}"}
-#             # ],
-
-#             ### It's for Memory and
 #             messages=[
-#                 {"role": "system", "content": "You're a helpful assistant using context + memory."},
+#                 {"role": "system", "content": "You're a helpful assistant using memory and documents."},
 #                 *[{"role": msg["role"], "content": msg["message"]} for msg in existing_metadata],
-#                 {"role": "user", "content": f"Relevant Info:\n{retrieved_context}\n\nUser Query:\n{request.query}"}
+#                 {"role": "user", "content": f"Relevant Info:\n{retrieved_context}\n\nQuery:\n{request.query}"}
 #             ],
 #             temperature=0.7
-#         )
+#         ).choices[0].message.content
 
-#         ai_response = response.choices[0].message.content
+#         # openai_response = client.chat.completions.create(
+#         #     model="gpt-4o-mini",
+#         #     messages=[
+#         #         {"role": "system", "content": "You are a helpful assistant. ONLY use the provided context to answer. If the answer is not in the context, reply with: 'I'm sorry, I couldn't find that information in the documents.'"},
+#         #         *[{"role": msg["role"], "content": msg["message"]} for msg in existing_metadata],
+#         #         {"role": "user", "content": f"Context:\n{retrieved_context}\n\nQuery:\n{request.query}"}
+#         #     ],
+#         #     temperature=0.0
+#         # ).choices[0].message.content
 
-#         new_messages = existing_messages + [request.query, ai_response]
+#         # openai_response = client.chat.completions.create(
+#         #     model="gpt-4o-mini",
+#         #     messages=[
+#         #         {"role": "system", "content": "You are a strict assistant. ONLY answer using the provided context. If the answer is not found in the context, respond with: 'Sorry, I couldn't find that information in the provided documents.' Do NOT guess or provide potentially incorrect information."},
+#         #         {"role": "user", "content": f"Context:\n{retrieved_context}\n\nQuestion:\n{request.query}"}
+#         #     ],
+#         #     temperature=0.0  # removes creativity/hallucination
+#         # ).choices[0].message.content
+
+#         # ✅ Step 3: Ask LLM to validate which response is better
+#         validation_prompt = f"""You are a helpful assistant evaluating two responses for a user query.
+
+#         Query: {request.query}
+
+#         Answer A (OpenAI): {openai_response}
+
+#         Answer B (From Knowledge Base): {top_doc_response}
+
+#         Which answer better addresses the user's query? Reply with 'A' or 'B' and a brief explanation.
+#         """
+
+#         validation_response = client.chat.completions.create(
+#             model="gpt-4o-mini",
+#             messages=[
+#                 {"role": "user", "content": validation_prompt}
+#             ],
+#             temperature=0.2
+#         ).choices[0].message.content.strip()
+
+#         print(f"✅ Validation Response: {validation_response}")
+
+#         # ✅ Decide which answer to use
+#         if "A" in validation_response:
+#             final_answer = openai_response
+#         elif "B" in validation_response:
+#             final_answer = top_doc_response
+#         else:
+#             final_answer = openai_response  # fallback
+
+#         # ✅ Store updated chat in ChromaDB
+#         new_messages = existing_messages + [request.query, final_answer]
 #         new_metadata = existing_metadata + [
 #             {
 #                 "role": "user",
@@ -400,7 +590,7 @@ async def upload_docs(texts: List[str] = Body(..., embed=True)):
 #             },
 #             {
 #                 "role": "assistant",
-#                 "message": ai_response,
+#                 "message": final_answer,
 #                 "session_id": request.session_id,
 #                 "chat_id": request.chat_id,
 #                 "timestamp": str(datetime.utcnow())
@@ -420,142 +610,16 @@ async def upload_docs(texts: List[str] = Body(..., embed=True)):
 #         print(f"📦 Stored in ChromaDB: chat_id={request.chat_id}")
 
 #         return {
-#             "response": ai_response,
+#             "response": final_answer,
 #             "session_id": request.session_id,
-#             "chat_id": request.chat_id
+#             "chat_id": request.chat_id,
+#             "validation_summary": validation_response  # (optional for debugging)
 #         }
 
 #     except Exception as e:
 #         print(f"❌ Chat error: {e}")
+#         traceback.print_exc()
 #         return {"response": "Sorry, something went wrong.", "session_id": request.session_id}
-
-# TODO: working fine but gpt isn't learning from mistakes.
-@app.post("/api/chat/")
-async def chat(request: ChatRequest):
-    try:
-        print(f"🔍 Received: session_id={request.session_id}, chat_id={request.chat_id}, query='{request.query}'")
-
-        if not request.session_id:
-            raise HTTPException(status_code=400, detail="Session ID is required")
-        if not request.chat_id:
-            raise HTTPException(status_code=400, detail="Chat ID is required")
-
-        user = await users_collection.find_one({"session_id": request.session_id})
-        if not user:
-            raise HTTPException(status_code=401, detail="Invalid session")
-
-        # ✅ Retrieve existing chat history from ChromaDB
-        chat_history = vector_db.get(ids=[request.chat_id])
-        existing_messages = json.loads(chat_history["documents"][0]) if chat_history["documents"] else []
-        existing_metadata = json.loads(chat_history["metadatas"][0]["messages"]) if chat_history["metadatas"] else []
-
-        # ✅ Step 1: Retrieve related documents from knowledge base
-        retrieved_chunks = docs_vector_db.similarity_search(request.query, k=3)
-        retrieved_context = "\n".join([doc.page_content for doc in retrieved_chunks])
-        top_doc_response = retrieved_chunks[0].page_content if retrieved_chunks else "No context found."
-
-        # ✅ Step 2: Generate response using LLM and RAG context
-        openai_response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": "You're a helpful assistant using memory and documents."},
-                *[{"role": msg["role"], "content": msg["message"]} for msg in existing_metadata],
-                {"role": "user", "content": f"Relevant Info:\n{retrieved_context}\n\nQuery:\n{request.query}"}
-            ],
-            temperature=0.7
-        ).choices[0].message.content
-
-        # openai_response = client.chat.completions.create(
-        #     model="gpt-4o-mini",
-        #     messages=[
-        #         {"role": "system", "content": "You are a helpful assistant. ONLY use the provided context to answer. If the answer is not in the context, reply with: 'I'm sorry, I couldn't find that information in the documents.'"},
-        #         *[{"role": msg["role"], "content": msg["message"]} for msg in existing_metadata],
-        #         {"role": "user", "content": f"Context:\n{retrieved_context}\n\nQuery:\n{request.query}"}
-        #     ],
-        #     temperature=0.0
-        # ).choices[0].message.content
-
-        # openai_response = client.chat.completions.create(
-        #     model="gpt-4o-mini",
-        #     messages=[
-        #         {"role": "system", "content": "You are a strict assistant. ONLY answer using the provided context. If the answer is not found in the context, respond with: 'Sorry, I couldn't find that information in the provided documents.' Do NOT guess or provide potentially incorrect information."},
-        #         {"role": "user", "content": f"Context:\n{retrieved_context}\n\nQuestion:\n{request.query}"}
-        #     ],
-        #     temperature=0.0  # removes creativity/hallucination
-        # ).choices[0].message.content
-
-        # ✅ Step 3: Ask LLM to validate which response is better
-        validation_prompt = f"""You are a helpful assistant evaluating two responses for a user query.
-
-        Query: {request.query}
-
-        Answer A (OpenAI): {openai_response}
-
-        Answer B (From Knowledge Base): {top_doc_response}
-
-        Which answer better addresses the user's query? Reply with 'A' or 'B' and a brief explanation.
-        """
-
-        validation_response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "user", "content": validation_prompt}
-            ],
-            temperature=0.2
-        ).choices[0].message.content.strip()
-
-        print(f"✅ Validation Response: {validation_response}")
-
-        # ✅ Decide which answer to use
-        if "A" in validation_response:
-            final_answer = openai_response
-        elif "B" in validation_response:
-            final_answer = top_doc_response
-        else:
-            final_answer = openai_response  # fallback
-
-        # ✅ Store updated chat in ChromaDB
-        new_messages = existing_messages + [request.query, final_answer]
-        new_metadata = existing_metadata + [
-            {
-                "role": "user",
-                "message": request.query,
-                "session_id": request.session_id,
-                "chat_id": request.chat_id,
-                "timestamp": str(datetime.utcnow())
-            },
-            {
-                "role": "assistant",
-                "message": final_answer,
-                "session_id": request.session_id,
-                "chat_id": request.chat_id,
-                "timestamp": str(datetime.utcnow())
-            }
-        ]
-
-        vector_db.add_texts(
-            texts=[json.dumps(new_messages)],
-            metadatas=[{
-                "session_id": request.session_id,
-                "chat_id": request.chat_id,
-                "messages": json.dumps(new_metadata)
-            }],
-            ids=[request.chat_id]
-        )
-
-        print(f"📦 Stored in ChromaDB: chat_id={request.chat_id}")
-
-        return {
-            "response": final_answer,
-            "session_id": request.session_id,
-            "chat_id": request.chat_id,
-            "validation_summary": validation_response  # (optional for debugging)
-        }
-
-    except Exception as e:
-        print(f"❌ Chat error: {e}")
-        traceback.print_exc()
-        return {"response": "Sorry, something went wrong.", "session_id": request.session_id}
 
 # @app.post("/api/chat/")
 # async def chat(request: ChatRequest):
