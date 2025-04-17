@@ -123,36 +123,3 @@ const AddPost = () => {
 };
 
 export default AddPost;
-
-
-// import React, { useState } from "react";
-// import axios from "axios";
-
-// const AddPost = () => {
-//     const [title, setTitle] = useState("");
-//     const [content, setContent] = useState("");
-//     const sessionToken = localStorage.getItem("session_token");
-
-//     const addContent = async () => {
-//         try {
-//             await axios.post("http://127.0.0.1:8000/api/admin/add-content", { title, content }, {
-//                 headers: { session_token: sessionToken }
-//             });
-//             alert("Content added successfully!");
-//             window.location.href = "/admin-dashboard";
-//         } catch (error) {
-//             alert("Failed to add content: " + error.response.data.detail);
-//         }
-//     };
-
-//     return (
-//         <div>
-//             <h2>Add New Content</h2>
-//             <input type="text" placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
-//             <textarea placeholder="Content" value={content} onChange={(e) => setContent(e.target.value)} />
-//             <button onClick={addContent}>Add Content</button>
-//         </div>
-//     );
-// };
-
-// export default AddPost;

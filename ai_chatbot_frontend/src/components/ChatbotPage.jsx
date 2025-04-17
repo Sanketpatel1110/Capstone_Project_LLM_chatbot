@@ -335,7 +335,7 @@ const ChatbotPage = ({ darkMode }) => {
             Sign Out
           </button>
           <p style={{ fontSize: "12px", color: "#bbb", marginTop: "10px" }}>
-            Developed by <a href="#" style={{ color: "#00bcd4" }}>Team - 4</a>
+            Developed by <a href="#" style={{ color: "#00bcd4" }}>Urby_Experts</a>
           </p>
         </div>
       </div>

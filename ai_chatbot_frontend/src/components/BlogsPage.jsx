@@ -146,6 +146,7 @@ const BlogPost = ({ darkMode }) => {
             <ReactMarkdown>{blog.explanation}</ReactMarkdown>
           </div>
 
+          <h2 style={sectionHeadingStyle}>3.0 Related Study</h2>
           <ul style={{ paddingLeft: "20px" }}>
             {blog.sessions.map((session, idx) => (
               <li key={idx} style={listItemStyle}>
