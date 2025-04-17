@@ -6,14 +6,6 @@ This Capstone project presents a robust AI-powered chatbot solution designed for
 
 The chatbot is developed to support secure multi-user access, content management, and document-based retrieval to enhance information accessibility and operational efficiency within the organization.
 
----
-
-## Group Members
-
-- **Sanket Patel**  
-- **Om V. Patel**  
-- **Ramanpreet Kaur**  
-- **Sadia Khan**
 
 ---
 
