@@ -82,10 +82,6 @@ This project was developed in partnership with **Urban Systems Ltd.**, with key 
 git clone https://github.com/Sanketpatel1110/Capstone_Project_LLM_chatbot.git
 cd Capstone_Project_LLM_chatbot
 
-
-
----
-
 ### 2.Frontend Setup (`ai_chatbot_frontend`)
 
 1. Navigate to the frontend directory:
@@ -98,3 +94,8 @@ cd Capstone_Project_LLM_chatbot
 
 cd ai_chatbot_backend
 uvicorn main:app --reload
+
+
+
+---
+
