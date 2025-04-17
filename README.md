@@ -91,7 +91,6 @@ npm start
 
 # 3. Backend setup
 cd ai_chatbot_backend
-pip install -r requirements.txt
 uvicorn main:app --reload
 # Backend will run at http://localhost:8000
 
