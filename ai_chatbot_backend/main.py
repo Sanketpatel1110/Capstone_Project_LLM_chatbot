@@ -511,17 +511,25 @@ async def get_chat_history(
     try:
         print(f"🔍 Fetching chat history for session_id={session_id} and chat_id={chat_id}")
 
-        #  Fetch messages from ChromaDB using chat_id
+        # Fetch messages from ChromaDB using chat_id
         results = vector_db.get(where={"chat_id": chat_id})
 
         print(f" Raw ChromaDB results: {results}")
 
-        # if not results or not results.get("documents"):
-       if not results or not results.get("documents") or not results["documents"][0]:
+        # Validate results
+        if (
+            not results
+            or not results.get("documents")
+            or not results["documents"][0]
+        ):
             print("⚠️ No chat history found for this chat_id")
-            return {"session_id": session_id, "chat_id": chat_id, "history": []}
+            return {
+                "session_id": session_id,
+                "chat_id": chat_id,
+                "history": []
+            }
 
-        #  Messages are stored as a JSON string, so we need to parse them
+        # Parse stored messages and metadata
         stored_messages = json.loads(results["documents"][0])
         stored_metadata = json.loads(results["metadatas"][0]["messages"])
 
@@ -534,11 +542,11 @@ async def get_chat_history(
             }
             messages.append(msg)
 
-        #  Sort messages by timestamp before returning
+        # Sort messages by timestamp before returning
         messages.sort(key=lambda x: x["timestamp"])
 
-        print(f" Final formatted chat history: {messages}")
-        
+        print(f"✅ Final formatted chat history: {messages}")
+
         return {
             "session_id": session_id,
             "chat_id": chat_id,
