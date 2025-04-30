@@ -10,7 +10,7 @@ const AddMarkdownPage = () => {
   const navigate = useNavigate();
 
   const submitContent = async () => {
-    await axios.post("http://localhost:8000/api/admin/add-markdown-content", {
+     await axios.post("https://capstone-project-llm-chatbot.onrender.com/api/admin/add-markdown-content", {
       title, markdown_content
     });
     navigate("/admin-dashboard");
