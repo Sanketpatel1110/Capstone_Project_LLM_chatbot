@@ -36,7 +36,7 @@ parso==0.8.4
 pexpect==4.9.0
 platformdirs==4.3.7
 prompt_toolkit==3.0.50
-protobuf==6.30.2
+protobuf==3.20.3
 psutil==7.0.0
 ptyprocess==0.7.0
 pure_eval==0.2.3
@@ -76,4 +76,3 @@ bcrypt==4.1.2
 openai==1.14.2
 chromadb==0.4.24
 numpy==1.26.4
-
