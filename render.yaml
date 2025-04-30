@@ -1,8 +1,18 @@
 services:
   - type: web
     name: chatbot-backend
-    env: python
-    plan: free
-    buildCommand: pip install -r ai_chatbot_backend/requirements.txt
-    startCommand: python -m uvicorn ai_chatbot_backend.main:app --host 0.0.0.0 --port 10000 --reload
+    env: docker
+    dockerfilePath: ai_chatbot_backend/Dockerfile
+    buildFilter:
+      paths:
+        - ai_chatbot_backend/**
+    autoDeploy: true
+
+  - type: web
+    name: chatbot-frontend
+    env: docker
+    dockerfilePath: ai_chatbot_frontend/Dockerfile
+    buildFilter:
+      paths:
+        - ai_chatbot_frontend/**
     autoDeploy: true
