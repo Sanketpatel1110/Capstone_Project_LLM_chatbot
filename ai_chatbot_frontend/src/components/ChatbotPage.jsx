@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+const API = process.env.REACT_APP_API_URL;
 
 const ChatbotPage = ({ darkMode }) => {
   const [messages, setMessages] = useState([]);
@@ -27,7 +28,7 @@ const ChatbotPage = ({ darkMode }) => {
       fetchSidebarChats(storedSession);
     } else {
       axios
-        .post("http://localhost:8000/api/login", {
+        .post("${API}/api/login", {
           email: "user@example.com",
           password: "yourpassword",
         })
@@ -49,7 +50,7 @@ const ChatbotPage = ({ darkMode }) => {
 
   const fetchChatHistory = async (session, chat) => {
     try {
-      const res = await axios.get(`http://localhost:8000/api/chat/history`, {
+      const res = await axios.get(`${API}/api/chat/history`, {
         params: { session_id: session, chat_id: chat },
       });
 
@@ -87,7 +88,7 @@ const ChatbotPage = ({ darkMode }) => {
 
   const fetchSidebarChats = async (session) => {
     try {
-      const res = await axios.get("http://localhost:8000/api/chat/all-chats", {
+      const res = await axios.get("${API}/api/chat/all-chats", {
         params: { session_id: session },
       });
 
@@ -110,7 +111,7 @@ const ChatbotPage = ({ darkMode }) => {
     const storedSession = sessionStorage.getItem("chatSessionId");
     try {
       const res = await axios.post(
-        `http://localhost:8000/api/chat/new?session_id=${storedSession}`
+        `${API}/api/chat/new?session_id=${storedSession}`
       );
       const newChatId = res.data.chat_id;
       sessionStorage.setItem("chatId", newChatId);
@@ -133,7 +134,7 @@ const ChatbotPage = ({ darkMode }) => {
     setLoading(true);
 
     try {
-      const res = await axios.post("http://localhost:8000/api/chat/", {
+      const res = await axios.post("${API}/api/chat/", {
         query: input.trim(),
         session_id: sessionStorage.getItem("chatSessionId"),
         chat_id: sessionStorage.getItem("chatId"),
@@ -160,7 +161,7 @@ const ChatbotPage = ({ darkMode }) => {
     const session_id = sessionStorage.getItem("chatSessionId");
   
     try {
-      await axios.delete("http://localhost:8000/api/chat/delete", {
+      await axios.delete("${API}/api/chat/delete", {
         data: { session_id, chat_id },
       });
   
