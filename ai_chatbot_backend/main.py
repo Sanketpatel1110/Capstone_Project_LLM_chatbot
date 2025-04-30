@@ -76,10 +76,22 @@ class Content(BaseModel):
 # FastAPI App
 app = FastAPI()
 
+# app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=["*"],
+#     allow_credentials=False,
+#     allow_methods=["*"],
+#     allow_headers=["*"],
+# )
+
+# ✅ Add this immediately after `app = FastAPI()`
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
+    allow_origins=[
+        "https://capstone-project-llm-chatbot-frontend.onrender.com",  # Frontend domain
+        "http://localhost:3000"  # Optional: for local development
+    ],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
