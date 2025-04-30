@@ -529,26 +529,26 @@ const ChatbotPage = ({ darkMode }) => {
   //   }
   // };
 
-  // const fetchSidebarChats = async (session) => {
-  //   try {
-  //     const res = await axios.get(`${API}/api/chat/all-chats`, {
-  //       params: { session_id: session },
-  //     });
+  const fetchSidebarChats = async (session) => {
+    try {
+      const res = await axios.get(`${API}/api/chat/all-chats`, {
+        params: { session_id: session },
+      });
 
-  //     const sidebarChats = res.data.chats.map((chat) => ({
-  //       chat_id: chat.chat_id,
-  //       preview: chat.preview,
-  //       messages: chat.messages.map((msg) => ({
-  //         sender: msg.role === "user" ? "user" : "bot",
-  //         text: msg.message,
-  //       })),
-  //     }));
+      const sidebarChats = res.data.chats.map((chat) => ({
+        chat_id: chat.chat_id,
+        preview: chat.preview,
+        messages: chat.messages.map((msg) => ({
+          sender: msg.role === "user" ? "user" : "bot",
+          text: msg.message,
+        })),
+      }));
 
-  //     setChatHistory(sidebarChats);
-  //   } catch (err) {
-  //     console.error("Failed to fetch sidebar chats:", err);
-  //   }
-  // };
+      setChatHistory(sidebarChats);
+    } catch (err) {
+      console.error("Failed to fetch sidebar chats:", err);
+    }
+  };
 
 
 
