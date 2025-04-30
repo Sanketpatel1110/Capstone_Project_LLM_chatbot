@@ -491,18 +491,80 @@ const ChatbotPage = ({ darkMode }) => {
     }
   }, []);
 
+  // const fetchChatHistory = async (session, chat) => {
+  //   try {
+  //     const res = await axios.get(`${API}/api/chat/history`, {
+  //       params: { session_id: session, chat_id: chat },
+  //     });
+
+  //     if (res.data.history && res.data.history.length > 0) {
+  //       const formatted = res.data.history.map((msg) => ({
+  //         sender: msg.role === "user" ? "user" : "bot",
+  //         text: msg.message,
+  //         timestamp: msg.timestamp,
+  //       }));
+
+  //       setMessages(formatted);
+
+  //       const previewMsg =
+  //         formatted.find((m) => m.sender === "user")?.text || "New Chat";
+
+  //       setChatHistory((prevHistory) => {
+  //         const alreadyExists = prevHistory.some((c) => c.chat_id === chat);
+  //         const newEntry = {
+  //           chat_id: chat,
+  //           preview: previewMsg,
+  //           messages: formatted,
+  //         };
+
+  //         return alreadyExists
+  //           ? prevHistory.map((item) =>
+  //               item.chat_id === chat ? newEntry : item
+  //             )
+  //           : [...prevHistory, newEntry];
+  //       });
+  //     }
+  //   } catch (error) {
+  //     console.error("❌ Error fetching chat history:", error);
+  //   }
+  // };
+
+  // const fetchSidebarChats = async (session) => {
+  //   try {
+  //     const res = await axios.get(`${API}/api/chat/all-chats`, {
+  //       params: { session_id: session },
+  //     });
+
+  //     const sidebarChats = res.data.chats.map((chat) => ({
+  //       chat_id: chat.chat_id,
+  //       preview: chat.preview,
+  //       messages: chat.messages.map((msg) => ({
+  //         sender: msg.role === "user" ? "user" : "bot",
+  //         text: msg.message,
+  //       })),
+  //     }));
+
+  //     setChatHistory(sidebarChats);
+  //   } catch (err) {
+  //     console.error("Failed to fetch sidebar chats:", err);
+  //   }
+  // };
+
+
+
+  
   const fetchChatHistory = async (session, chat) => {
     try {
       const res = await axios.get(`${API}/api/chat/history`, {
         params: { session_id: session, chat_id: chat },
       });
 
-      if (res.data.history && res.data.history.length > 0) {
+      if (res.data.history) {
         const formatted = res.data.history.map((msg) => ({
           sender: msg.role === "user" ? "user" : "bot",
           text: msg.message,
           timestamp: msg.timestamp,
-        }));
+        })) || [];
 
         setMessages(formatted);
 
@@ -523,32 +585,15 @@ const ChatbotPage = ({ darkMode }) => {
               )
             : [...prevHistory, newEntry];
         });
+      } else {
+        setMessages([]); // No history, start clean
       }
     } catch (error) {
       console.error("❌ Error fetching chat history:", error);
+      setMessages([]); // Show empty chat if error
     }
   };
 
-  const fetchSidebarChats = async (session) => {
-    try {
-      const res = await axios.get(`${API}/api/chat/all-chats`, {
-        params: { session_id: session },
-      });
-
-      const sidebarChats = res.data.chats.map((chat) => ({
-        chat_id: chat.chat_id,
-        preview: chat.preview,
-        messages: chat.messages.map((msg) => ({
-          sender: msg.role === "user" ? "user" : "bot",
-          text: msg.message,
-        })),
-      }));
-
-      setChatHistory(sidebarChats);
-    } catch (err) {
-      console.error("Failed to fetch sidebar chats:", err);
-    }
-  };
 
   const startNewSession = async () => {
     const storedSession = sessionStorage.getItem("chatSessionId");
