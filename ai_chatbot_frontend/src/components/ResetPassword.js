@@ -98,8 +98,7 @@ const ResetPassword = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const API_BASE = process.env.REACT_APP_API_URL;
-
+  //const API_BASE = process.env.REACT_APP_API_URL;
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage("");
@@ -113,7 +112,8 @@ const ResetPassword = () => {
     }
 
     try {
-      const response = await fetch(`${API_BASE}/api/reset-password`, {
+      const response = await fetch("https://capstone-project-llm-chatbot-frontend.onrender.com/api/reset-password", {
+
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token, new_password: password }),
