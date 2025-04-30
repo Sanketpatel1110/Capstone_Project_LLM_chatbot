@@ -75,3 +75,5 @@ pymongo==4.6.3
 bcrypt==4.1.2
 openai==1.14.2
 chromadb==0.4.24
+numpy==1.26.4
+
