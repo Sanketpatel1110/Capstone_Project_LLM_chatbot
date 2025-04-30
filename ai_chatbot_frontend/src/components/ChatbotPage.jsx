@@ -28,7 +28,7 @@ const ChatbotPage = ({ darkMode }) => {
       fetchSidebarChats(storedSession);
     } else {
       axios
-        .post("${API}/api/login", {
+        .post(`${API}/api/login`, {
           email: "user@example.com",
           password: "yourpassword",
         })
@@ -88,7 +88,7 @@ const ChatbotPage = ({ darkMode }) => {
 
   const fetchSidebarChats = async (session) => {
     try {
-      const res = await axios.get("${API}/api/chat/all-chats", {
+      const res = await axios.get(`${API}/api/chat/all-chats`, {
         params: { session_id: session },
       });
 
@@ -134,7 +134,7 @@ const ChatbotPage = ({ darkMode }) => {
     setLoading(true);
 
     try {
-      const res = await axios.post("${API}/api/chat/", {
+      const res = await axios.post(`${API}/api/chat/`, {
         query: input.trim(),
         session_id: sessionStorage.getItem("chatSessionId"),
         chat_id: sessionStorage.getItem("chatId"),
@@ -161,7 +161,7 @@ const ChatbotPage = ({ darkMode }) => {
     const session_id = sessionStorage.getItem("chatSessionId");
   
     try {
-      await axios.delete("${API}/api/chat/delete", {
+      await axios.delete(`${API}/api/chat/delete`, {
         data: { session_id, chat_id },
       });
   
