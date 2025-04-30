@@ -36,7 +36,7 @@ if not OPENAI_API_KEY:
     raise ValueError("OpenAI API Key not found in environment variables.")
 
 # MongoDB Connection
-MONGO_DETAILS = os.getenv("MONGO_URL", "mongodb://localhost:27017")
+MONGO_DETAILS = os.getenv("MONGO_URI")
 mongo_client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_DETAILS)
 db = mongo_client.ai_chatbot_db
 users_collection = db.get_collection("users")
