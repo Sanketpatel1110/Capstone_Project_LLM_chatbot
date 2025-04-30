@@ -70,3 +70,4 @@ watchfiles==1.0.4
 wcwidth==0.2.13
 webencodings==0.5.1
 websockets==15.0
+motor==3.3.1
