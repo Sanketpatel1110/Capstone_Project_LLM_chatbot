@@ -8,13 +8,13 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    axios.get("http://localhost:8000/api/admin/get-markdown-content")
+    await axios.delete(`http://localhost:8000/api/admin/delete-markdown-content/${id}`);
       .then(res => setContent(res.data))
       .catch(err => console.error(err));
   }, []);
 
   const deleteContent = async (id) => {
-    await axios.delete(`http://localhost:8000/api/admin/delete-markdown-content/${id}`);
+    await axios.delete(`https://capstone-project-llm-chatbot.onrender.com/api/admin/delete-markdown-content/${id}`);
     setContent(content.filter(c => c._id !== id));
   };
 
