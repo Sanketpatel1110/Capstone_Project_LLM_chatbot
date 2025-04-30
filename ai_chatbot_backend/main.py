@@ -648,9 +648,8 @@ async def forgot_password(request: ForgotPasswordRequest, background_tasks: Back
     
     reset_token = secrets.token_urlsafe(32)
     await users_collection.update_one({"email": request.email}, {"$set": {"reset_token": reset_token, "reset_token_expiry": datetime.utcnow()}})
-    
-    reset_link = f"http://localhost:3000/reset-password/{reset_token}"
-    background_tasks.add_task(send_email, request.email, "Password Reset Request", f"Click here to reset your password: {reset_link}")
+    reset_link = f"https://capstone-project-llm-chatbot-frontend.onrender.com/reset-password/{reset_token}"
+      background_tasks.add_task(send_email, request.email, "Password Reset Request", f"Click here to reset your password: {reset_link}")
     
     return {"message": "Password reset link has been sent to your email"}
 
