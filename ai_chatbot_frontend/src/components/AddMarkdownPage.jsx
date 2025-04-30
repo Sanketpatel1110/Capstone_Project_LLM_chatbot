@@ -10,11 +10,18 @@ const AddMarkdownPage = () => {
   const navigate = useNavigate();
 
   const submitContent = async () => {
-       await axios.post(
-        `${process.env.REACT_APP_API_URL}/api/admin/add-markdown-content` {
-      title, markdown_content
-    });
-    navigate("/admin-dashboard");
+    try {
+      await axios.post(
+        `${process.env.REACT_APP_API_URL}/api/admin/add-markdown-content`,
+        {
+          title,
+          markdown_content,
+        }
+      );
+      navigate("/admin-dashboard");
+    } catch (err) {
+      console.error("Failed to submit content:", err);
+    }
   };
 
   return (
