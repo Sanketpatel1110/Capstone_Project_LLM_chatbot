@@ -12,6 +12,7 @@ click==8.1.8
 comm==0.2.2
 debugpy==1.8.13
 decorator==5.2.1
+dnspython==2.7.0
 executing==2.2.0
 fastapi==0.115.8
 h11==0.14.0
@@ -29,6 +30,7 @@ markdown-it-py==3.0.0
 MarkupSafe==3.0.2
 matplotlib-inline==0.1.7
 mdurl==0.1.2
+motor==3.3.1
 nest-asyncio==1.6.0
 packaging==24.2
 parso==0.8.4
@@ -41,6 +43,7 @@ ptyprocess==0.7.0
 pure_eval==0.2.3
 pydantic==2.10.6
 pydantic_core==2.27.2
+pymongo==4.3.3  # ✅ Compatible with motor 3.3.1
 Pygments==2.19.1
 python-dateutil==2.9.0.post0
 python-dotenv==1.0.1
@@ -70,4 +73,3 @@ watchfiles==1.0.4
 wcwidth==0.2.13
 webencodings==0.5.1
 websockets==15.0
-motor==3.3.1
