@@ -516,7 +516,8 @@ async def get_chat_history(
 
         print(f" Raw ChromaDB results: {results}")
 
-        if not results or not results.get("documents"):
+        # if not results or not results.get("documents"):
+        if not results or not results.get("documents") or not results["documents"][0]
             print("⚠️ No chat history found for this chat_id")
             return {"session_id": session_id, "chat_id": chat_id, "history": []}
 
