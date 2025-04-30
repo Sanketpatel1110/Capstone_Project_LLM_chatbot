@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: chatbot-backend
+    env: docker
+    dockerfilePath: ai_chatbot_backend/Dockerfile
+    buildFilter:
+      paths:
+        - ai_chatbot_backend/**
+    autoDeploy: true
+
+  - type: web
+    name: chatbot-frontend
+    env: docker
+    dockerfilePath: ai_chatbot_frontend/Dockerfile
+    buildFilter:
+      paths:
+        - ai_chatbot_frontend/**
+    autoDeploy: true
