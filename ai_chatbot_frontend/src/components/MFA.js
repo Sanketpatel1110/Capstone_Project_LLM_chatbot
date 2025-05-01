@@ -379,19 +379,19 @@ const MFA = () => {
       if (!response.ok) {
         setError(data.detail?.msg || data.detail || 'Invalid OTP. Please try again.');
       } else {
-        // ✅ Store session info correctly
+        //  Store session info correctly
         localStorage.setItem('session_token', data.session_id);
         localStorage.setItem('user_role', data.role);
         sessionStorage.setItem('chatSessionId', data.session_id);
         sessionStorage.setItem('chatId', data.chat_id);
 
-        toast.success('🎉 Verification successful!', {
+        toast.success(' Verification successful!', {
           position: 'top-center',
           autoClose: 2000,
           theme: 'colored',
         });
 
-        setTimeout(() => navigate('/blogs'), 2200);
+        setTimeout(() => navigate('/main'), 2200);
       }
     } catch (error) {
       setError('Something went wrong. Please try again later.');
@@ -419,7 +419,7 @@ const MFA = () => {
         setError('Failed to resend OTP. Please try again.');
         setResendDisabled(false);
       } else {
-        toast.info('📧 A new OTP has been sent!', {
+        toast.info(' A new OTP has been sent!', {
           position: 'top-center',
           autoClose: 2000,
           theme: 'colored',
