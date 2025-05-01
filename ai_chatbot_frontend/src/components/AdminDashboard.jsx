@@ -94,7 +94,7 @@ const AdminDashboard = () => {
         style={styles.addButton}
         onClick={() => navigate("/add-markdown-page")}
       >
-        ➕ Add New Markdown Page
+         Add New Markdown Page
       </button>
 
       {content.length === 0 && (
