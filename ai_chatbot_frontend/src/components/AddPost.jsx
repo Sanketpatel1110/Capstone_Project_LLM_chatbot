@@ -111,7 +111,7 @@ const AddPost = () => {
             onClick={handleSubmit}
             className="flex-1 bg-red-600 text-white py-3 rounded-xl font-semibold shadow-lg hover:bg-red-700 transition duration-300"
           >
-            ✅ SUBMIT
+             SUBMIT
           </button>
         </div>
       </div>
