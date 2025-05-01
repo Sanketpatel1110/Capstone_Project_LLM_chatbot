@@ -3,6 +3,8 @@
 // import { Container, Card, Form, Button, Alert } from "react-bootstrap";
 // import "bootstrap/dist/css/bootstrap.min.css";
 
+// const API_BASE = "https://capstone-project-llm-chatbot-backend.onrender.com";
+
 // const ResetPassword = () => {
 //   const { token } = useParams();
 //   const navigate = useNavigate();
@@ -11,8 +13,6 @@
 //   const [message, setMessage] = useState("");
 //   const [error, setError] = useState("");
 //   const [loading, setLoading] = useState(false);
-
-//   const API_BASE = "https://capstone-project-llm-chatbot-backend.onrender.com";
 
 //   const handleSubmit = async (e) => {
 //     e.preventDefault();
@@ -33,28 +33,19 @@
 //         body: JSON.stringify({ token, new_password: password }),
 //       });
 
-//       const text = await response.text();
-//       let data;
-//       try {
-//         data = JSON.parse(text);
-//       } catch {
-//         setError("❌ Unexpected response from server.");
-//         setLoading(false);
-//         return;
-//       }
+//       const data = await response.json();
 
 //       if (response.ok) {
-//         setMessage("✅ Password reset successful! Redirecting...");
+//         setMessage("Password reset successful! Redirecting...");
 //         setTimeout(() => navigate("/thank-you"), 3000);
 //       } else {
-//         setError(data.detail || "❌ An error occurred. Please try again.");
+//         setError(data.detail || "An error occurred. Please try again.");
 //       }
 //     } catch (err) {
-//       console.error(err);
-//       setError("❌ Failed to reset password. Try again later.");
-//     } finally {
-//       setLoading(false);
+//       setError("Failed to reset password. Try again later.");
 //     }
+
+//     setLoading(false);
 //   };
 
 //   return (
@@ -97,7 +88,6 @@
 // };
 
 // export default ResetPassword;
-
 
 
 
