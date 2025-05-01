@@ -89,14 +89,12 @@
 
 // export default ResetPassword;
 
-
-
 import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Container, Card, Form, Button, Alert } from "react-bootstrap";
 import "bootstrap/dist/css/bootstrap.min.css";
 
-const API_BASE = "https://capstone-project-llm-chatbot-backend.onrender.com";
+const BASE_URL = process.env.REACT_APP_API_URL;
 
 const ResetPassword = () => {
   const { token } = useParams();
@@ -120,7 +118,7 @@ const ResetPassword = () => {
     }
 
     try {
-      const response = await fetch(`${API_BASE}/api/reset-password`, {
+      const response = await fetch(`${BASE_URL}/api/reset-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token, new_password: password }),
