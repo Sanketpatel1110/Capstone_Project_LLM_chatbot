@@ -100,6 +100,21 @@ app.add_middleware(
 #     allow_methods=["*"],
 #     allow_headers=["*"],
 # )
+
+@app.get("/")
+async def root():
+    return {
+        "message": "AI Chatbot API is running successfully! 🚀",
+        "status": "healthy",
+        "version": "1.0.0",
+        "endpoints": {
+            "api_docs": "/docs",
+            "health": "/api/status", 
+            "chat": "/api/chat",
+            "register": "/api/register",
+            "login": "/api/login"
+        }
+    }
 class RegisterRequest(BaseModel):
     name: str
     email: EmailStr
@@ -832,5 +847,6 @@ async def get_events():
     events_cursor = events_collection.find({}, {"_id": 0})  # Exclude MongoDB ID
     events_list = await events_cursor.to_list(length=100)
     return events_list
+
 
 
