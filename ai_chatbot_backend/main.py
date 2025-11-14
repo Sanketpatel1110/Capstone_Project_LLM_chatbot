@@ -17,14 +17,8 @@ import openai
 import random
 import hashlib
 import chromadb
-#old
-# from langchain.vectorstores import Chroma
-# from langchain.embeddings.openai import OpenAIEmbeddings
-
-# from langchain.docstore.document import Document
-#new
-from langchain_community.vectorstores import Chroma
-from langchain_openai import OpenAIEmbeddings
+from langchain.vectorstores import Chroma
+from langchain.embeddings.openai import OpenAIEmbeddings
 from typing import Optional, List
 from uuid import uuid4
 from fastapi import Body
@@ -847,6 +841,7 @@ async def get_events():
     events_cursor = events_collection.find({}, {"_id": 0})  # Exclude MongoDB ID
     events_list = await events_cursor.to_list(length=100)
     return events_list
+
 
 
 
