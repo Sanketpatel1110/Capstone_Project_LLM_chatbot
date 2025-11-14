@@ -75,25 +75,25 @@ class Content(BaseModel):
 # FastAPI App
 app = FastAPI()
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# # ✅ Add this immediately after `app = FastAPI()`
 # app.add_middleware(
 #     CORSMiddleware,
-#     allow_origins=[
-#         "https://capstone-project-llm-chatbot-frontend.onrender.com",  # Frontend domain
-#         "http://localhost:3000"  # Optional: for local development
-#     ],
+#     allow_origins=["*"],
 #     allow_credentials=True,
 #     allow_methods=["*"],
 #     allow_headers=["*"],
 # )
+
+# ✅ Add this immediately after `app = FastAPI()`
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://capstone-project-llm-chatbot-frontend.onrender.com",  # Frontend domain
+        "http://localhost:3000"  # Optional: for local development
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/")
 async def root():
@@ -841,6 +841,7 @@ async def get_events():
     events_cursor = events_collection.find({}, {"_id": 0})  # Exclude MongoDB ID
     events_list = await events_cursor.to_list(length=100)
     return events_list
+
 
 
 
